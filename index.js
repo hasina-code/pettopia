@@ -63,6 +63,43 @@ app.get('/api/pets', async (req, res) => {
 
 
 
+    //search, filter, and sorting functionality for pets API
+
+app.get('/pets', async (req, res) => {
+  try {
+    const { search, species, sort } = req.query;
+    let query = {};
+
+    
+    if (search && search.trim() !== "") {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { name: searchRegex },
+        { breed: searchRegex }
+      ];
+    }
+
+    if (species && species.trim() !== "") {
+     
+      query.species = { $regex: new RegExp(`^${species.trim()}$`, 'i') };
+    }
+
+  
+    let sortOptions = {};
+    if (sort === 'low-to-high') sortOptions.adoptionFee = 1;
+    else if (sort === 'high-to-low') sortOptions.adoptionFee = -1;
+
+    const result = await petsCollection.find(query).sort(sortOptions).toArray();
+    
+    console.log("Query sent to DB:", query); 
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Server Error", error });
+  }
+});
+
+
+
 
 
 
