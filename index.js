@@ -35,10 +35,8 @@ async function run() {
 
 
 
-
-
-
-
+const db = client.db("PetTopia");
+const petsCollection = db.collection("pets"); // 
 
 
 
