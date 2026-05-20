@@ -43,6 +43,30 @@ const petsCollection = db.collection("pets"); //
 
 
 
+app.get('/api/pets', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+   
+    const pets = await petsCollection.find().limit(limit).toArray();
+    res.send(pets);
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching pets", error });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
