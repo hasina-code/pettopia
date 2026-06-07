@@ -609,23 +609,6 @@ app.patch("/approve-request/:id", async (req, res) => {
 
 
 
-//request cancel
-app.delete("/requests/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-
-    const result =
-      await adoptionRequestsCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-
-    res.send(result);
-
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
 
   
 //My Requests
@@ -651,24 +634,6 @@ app.get("/my-requests/:email",verifyToken,async (req, res) => {
 
 
 
-
-  
-  app.get("/pet-requests/:petId", async (req, res) => {
-  try {
-    const { petId } = req.params;
-
-    const requests =
-      await adoptionRequestsCollection
-        .find({ petId })
-        .sort({ createdAt: -1 })
-        .toArray();
-
-    res.send(requests);
-
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
 
 
 
