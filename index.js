@@ -58,7 +58,7 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password, confirmPassword, photoURL } = req.body;
 
-    //  Required fields check
+    // 1. Required fields check
     if (!name || !email || !password || !confirmPassword) {
       return res.status(400).send({
         success: false,
@@ -66,7 +66,7 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    // Normalize values (IMPORTANT FIX)
+    // 2. Normalize values (IMPORTANT FIX)
     const safeEmail = String(email).trim().toLowerCase();
     const safePassword = String(password);
     const safeConfirm = String(confirmPassword);
@@ -81,7 +81,7 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     
-    //  Password match check
+    // 4. Password match check
   
     if (safePassword !== safeConfirm) {
       return res.status(400).send({
@@ -91,7 +91,7 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
  
-    //  Password strength check
+    // 5. Password strength check
     if (safePassword.length < 6) {
       return res.status(400).send({
         success: false,
@@ -99,7 +99,7 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    //  Check existing user
+    // 6. Check existing user
    
     const existingUser = await usersCollection.findOne({
       email: safeEmail,
@@ -112,13 +112,14 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    //  Hash password
-  
+    // =========================
+    // 7. Hash password
+    // =========================
     const hashedPassword = await bcrypt.hash(safePassword, 10);
 
-   
-    // Save user
-  
+    // =========================
+    // 8. Save user
+    // =========================
     const result = await usersCollection.insertOne({
       name,
       email: safeEmail,
@@ -155,7 +156,24 @@ app.post("/api/auth/register", async (req, res) => {
 
 
 
-    
+      const token = jwt.sign({ email: user.email, name: user.name,  role: user.role}, process.env.JWT_SECRET, { expiresIn: "7d" });
+      res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax" });
+      res.send({ success: true, user: { name: user.name, email: user.email, photoURL: user.photoURL } });
+    });
+
+
+
+    app.get("/api/auth/get-session", verifyToken, async (req, res) => {
+      const user = await usersCollection.findOne({ email: req.user.email });
+      user ? res.send({ user }) : res.status(404).send({ message: "User Not Found" });
+    });
+
+
+
+    app.post("/api/auth/logout", (req, res) => {
+      res.clearCookie("token").send({ success: true });
+    });
+
 
 
     
@@ -203,10 +221,10 @@ app.get("/pets", async (req, res) => {
       ];
     }
 
-  
+    // =========================
     // Filter by species
     // Using MongoDB $in
-   
+    // =========================
 
     if (species && species.trim() !== "") {
       const speciesArray = species
@@ -218,9 +236,9 @@ app.get("/pets", async (req, res) => {
       };
     }
 
-  
+    // =========================
     // Sorting Options
-  
+    // =========================
 
     let sortOptions = {};
 
@@ -270,11 +288,46 @@ app.get("/pets", async (req, res) => {
 
 
 //Add Pet Route
+app.post("/pets",verifyToken, async (req, res) => {
+  try {
+    const petData = req.body;
 
+    const result =
+      await petsCollection.insertOne({
+        ...petData,
+        adopted: false,
+        status: "available",
+        createdAt: new Date(),
+        });
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
 
 
 //My Listings
+app.get("/my-pets/:email",verifyToken, async (req, res) => {
+  try {
+    const email = req.params.email;
+
+    const result =
+      await petsCollection
+        .find({
+          ownerEmail: email,
+        })
+        .sort({
+          createdAt: -1,
+        })
+        .toArray();
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
 
 
