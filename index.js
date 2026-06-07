@@ -58,7 +58,7 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password, confirmPassword, photoURL } = req.body;
 
-    // 1. Required fields check
+    //  Required fields check
     if (!name || !email || !password || !confirmPassword) {
       return res.status(400).send({
         success: false,
@@ -66,7 +66,7 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    // 2. Normalize values (IMPORTANT FIX)
+    // Normalize values (IMPORTANT FIX)
     const safeEmail = String(email).trim().toLowerCase();
     const safePassword = String(password);
     const safeConfirm = String(confirmPassword);
@@ -81,7 +81,7 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     
-    // 4. Password match check
+    //  Password match check
   
     if (safePassword !== safeConfirm) {
       return res.status(400).send({
@@ -91,7 +91,7 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
  
-    // 5. Password strength check
+    //  Password strength check
     if (safePassword.length < 6) {
       return res.status(400).send({
         success: false,
@@ -99,7 +99,7 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    // 6. Check existing user
+    //  Check existing user
    
     const existingUser = await usersCollection.findOne({
       email: safeEmail,
@@ -112,14 +112,13 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    // =========================
-    // 7. Hash password
-    // =========================
+    //  Hash password
+  
     const hashedPassword = await bcrypt.hash(safePassword, 10);
 
-    // =========================
-    // 8. Save user
-    // =========================
+   
+    // Save user
+  
     const result = await usersCollection.insertOne({
       name,
       email: safeEmail,
@@ -156,24 +155,7 @@ app.post("/api/auth/register", async (req, res) => {
 
 
 
-      const token = jwt.sign({ email: user.email, name: user.name,  role: user.role}, process.env.JWT_SECRET, { expiresIn: "7d" });
-      res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax" });
-      res.send({ success: true, user: { name: user.name, email: user.email, photoURL: user.photoURL } });
-    });
-
-
-
-    app.get("/api/auth/get-session", verifyToken, async (req, res) => {
-      const user = await usersCollection.findOne({ email: req.user.email });
-      user ? res.send({ user }) : res.status(404).send({ message: "User Not Found" });
-    });
-
-
-
-    app.post("/api/auth/logout", (req, res) => {
-      res.clearCookie("token").send({ success: true });
-    });
-
+    
 
 
     
@@ -198,6 +180,7 @@ app.get("/pets", async (req, res) => {
     // Search by pet name/breed/species
     // Using MongoDB $regex
    
+
     if (search && search.trim() !== "") {
       const searchRegex = new RegExp(search, "i");
 
@@ -220,7 +203,7 @@ app.get("/pets", async (req, res) => {
       ];
     }
 
-   
+  
     // Filter by species
     // Using MongoDB $in
    
@@ -235,8 +218,9 @@ app.get("/pets", async (req, res) => {
       };
     }
 
+  
     // Sorting Options
-   
+  
 
     let sortOptions = {};
 
@@ -286,100 +270,21 @@ app.get("/pets", async (req, res) => {
 
 
 //Add Pet Route
-app.post("/pets",verifyToken, async (req, res) => {
-  try {
-    const petData = req.body;
 
-    const result =
-      await petsCollection.insertOne({
-        ...petData,
-        adopted: false,
-        status: "available",
-        createdAt: new Date(),
-        });
-
-    res.send(result);
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
 
 
 
 //My Listings
-app.get("/my-pets/:email",verifyToken, async (req, res) => {
-  try {
-    const email = req.params.email;
-
-    const result =
-      await petsCollection
-        .find({
-          ownerEmail: email,
-        })
-        .sort({
-          createdAt: -1,
-        })
-        .toArray();
-
-    res.send(result);
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
 
 
 
 //Cancel Request Route
 
 
-app.delete("/pets/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-
-    // Delete all adoption requests of this pet
-    await adoptionRequestsCollection.deleteMany({
-      petId: id,
-    });
-
-    // Delete pet
-    const result = await petsCollection.deleteOne({
-      _id: new ObjectId(id),
-    });
-
-    res.send(result);
-
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
 
 
 
 //Update Pet
-
-app.put("/pets/:id",verifyToken,async (req, res) => {
-  try {
-    const id = req.params.id;
-
-    const updatedData = req.body;
-
-    const result =
-      await petsCollection.updateOne(
-        {
-          _id: new ObjectId(id),
-        },
-        {
-          $set: updatedData,
-        }
-      );
-
-    res.send(result);
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
-
 
 
 //Single Pet
@@ -411,262 +316,6 @@ app.get("/pets/:id", async (req, res) => {
 
 
 
-
-
-
-
-
-// Get Requests By Pet Id
-
-
-app.get("/requests/:petId", async (req, res) => {
-  try {
-    const petId = req.params.petId;
-
-    const result =
-      await adoptionRequestsCollection
-        .find({ petId })
-        .toArray();
-
-    res.send(result);
-
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
-
-  //Reject Request
-  app.patch("/reject-request/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-
-    const result =
-      await adoptionRequestsCollection.updateOne(
-        {
-          _id: new ObjectId(id),
-        },
-        {
-          $set: {
-            status: "rejected",
-          },
-        }
-      );
-
-    res.send(result);
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
-
-
-
-
-app.post("/adoption-requests", async (req, res) => {
-  try {
-    const adoptionData = req.body;
-
-    const pet = await petsCollection.findOne({
-      _id: new ObjectId(adoptionData.petId),
-    });
-
-    if (!pet) {
-      return res.status(404).send({
-        success: false,
-        message: "Pet not found",
-      });
-    }
-
-    if (pet.ownerEmail === adoptionData.userEmail) {
-      return res.status(400).send({
-        success: false,
-        message: "Owner cannot adopt own pet",
-      });
-    }
-
-    if (pet.adopted) {
-      return res.status(400).send({
-        success: false,
-        message: "Pet already adopted",
-      });
-    }
-
-    const existingRequest =
-      await adoptionRequestsCollection.findOne({
-        petId: adoptionData.petId,
-        userEmail: adoptionData.userEmail,
-      });
-
-    if (existingRequest) {
-      return res.status(400).send({
-        success: false,
-        message: "You already requested this pet",
-      });
-    }
-
-    const result =
-      await adoptionRequestsCollection.insertOne({
-        ...adoptionData,
-        status: "pending",
-        createdAt: new Date(),
-      });
-
-    res.send({
-      success: true,
-      insertedId: result.insertedId,
-    });
-
-  } catch (error) {
-    res.status(500).send({
-      success: false,
-      message: "Failed to create request",
-    });
-  }
-});
-
-
-
-
-
-
-
-
-
-
-
-app.patch("/approve-request/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-
-    const request =
-      await adoptionRequestsCollection.findOne({
-        _id: new ObjectId(id),
-      });
-
-    if (!request) {
-      return res.status(404).send({
-        message: "Request not found",
-      });
-    }
-
-    // approve selected request
-
-    await adoptionRequestsCollection.updateOne(
-      {
-        _id: new ObjectId(id),
-      },
-      {
-        $set: {
-          status: "approved",
-        },
-      }
-    );
-
-
-    // reject other requests
-
-    await adoptionRequestsCollection.updateMany(
-      {
-        petId: request.petId,
-        _id: {
-          $ne: new ObjectId(id),
-        },
-      },
-      {
-        $set: {
-          status: "rejected",
-        },
-      }
-    );
-
-    // mark pet adopted
-
-   await petsCollection.updateOne(
-  {
-    _id: new ObjectId(request.petId),
-  },
-  {
-    $set: {
-      adopted: true,
-      status: "adopted",
-    },
-  }
-);
-
-    res.send({
-      success: true,
-      message: "Request Approved",
-    });
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
-
-
-
-
-//request cancel
-app.delete("/requests/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-
-    const result =
-      await adoptionRequestsCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-
-    res.send(result);
-
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
-
-  
-//My Requests
-app.get("/my-requests/:email",verifyToken,async (req, res) => {
-  try {
-    const email = req.params.email;
-
-    const result =
-      await adoptionRequestsCollection
-        .find({
-          userEmail: email,
-        })
-        .sort({
-          createdAt: -1,
-        })
-        .toArray();
-
-    res.send(result);
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
-
-
-
-
-  
-  app.get("/pet-requests/:petId", async (req, res) => {
-  try {
-    const { petId } = req.params;
-
-    const requests =
-      await adoptionRequestsCollection
-        .find({ petId })
-        .sort({ createdAt: -1 })
-        .toArray();
-
-    res.send(requests);
-
-  } catch (error) {
-    res.status(500).send(error);
-  }
-});
 
 
 
