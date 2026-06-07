@@ -609,6 +609,23 @@ app.patch("/approve-request/:id", async (req, res) => {
 
 
 
+//request cancel
+app.delete("/requests/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const result =
+      await adoptionRequestsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+
+    res.send(result);
+
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
 
   
 //My Requests
