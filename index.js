@@ -288,7 +288,7 @@ app.get("/pets", async (req, res) => {
 
 
 //Add Pet Route
-app.post("/pets",verifyToken, async (req, res) => {
+app.post("/pets", async (req, res) => {
   try {
     const petData = req.body;
 
@@ -309,7 +309,7 @@ app.post("/pets",verifyToken, async (req, res) => {
 
 
 //My Listings
-app.get("/my-pets/:email",verifyToken, async (req, res) => {
+app.get("/my-pets/:email",async (req, res) => {
   try {
     const email = req.params.email;
 
@@ -334,10 +334,54 @@ app.get("/my-pets/:email",verifyToken, async (req, res) => {
 //Cancel Request Route
 
 
+app.delete("/pets/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    // Delete all adoption requests of this pet
+    await adoptionRequestsCollection.deleteMany({
+      petId: id,
+    });
+
+    // Delete pet
+    const result = await petsCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    res.send(result);
+
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
 
 
 //Update Pet
+
+app.put("/pets/:id",async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const updatedData = req.body;
+
+    const result =
+      await petsCollection.updateOne(
+        {
+          _id: new ObjectId(id),
+        },
+        {
+          $set: updatedData,
+        }
+      );
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+
 
 
 //Single Pet
@@ -369,6 +413,262 @@ app.get("/pets/:id", async (req, res) => {
 
 
 
+
+
+
+
+
+// Get Requests By Pet Id
+
+
+app.get("/requests/:petId", async (req, res) => {
+  try {
+    const petId = req.params.petId;
+
+    const result =
+      await adoptionRequestsCollection
+        .find({ petId })
+        .toArray();
+
+    res.send(result);
+
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+
+  //Reject Request
+  app.patch("/reject-request/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const result =
+      await adoptionRequestsCollection.updateOne(
+        {
+          _id: new ObjectId(id),
+        },
+        {
+          $set: {
+            status: "rejected",
+          },
+        }
+      );
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+
+
+
+
+app.post("/adoption-requests", async (req, res) => {
+  try {
+    const adoptionData = req.body;
+
+    const pet = await petsCollection.findOne({
+      _id: new ObjectId(adoptionData.petId),
+    });
+
+    if (!pet) {
+      return res.status(404).send({
+        success: false,
+        message: "Pet not found",
+      });
+    }
+
+    if (pet.ownerEmail === adoptionData.userEmail) {
+      return res.status(400).send({
+        success: false,
+        message: "Owner cannot adopt own pet",
+      });
+    }
+
+    if (pet.adopted) {
+      return res.status(400).send({
+        success: false,
+        message: "Pet already adopted",
+      });
+    }
+
+    const existingRequest =
+      await adoptionRequestsCollection.findOne({
+        petId: adoptionData.petId,
+        userEmail: adoptionData.userEmail,
+      });
+
+    if (existingRequest) {
+      return res.status(400).send({
+        success: false,
+        message: "You already requested this pet",
+      });
+    }
+
+    const result =
+      await adoptionRequestsCollection.insertOne({
+        ...adoptionData,
+        status: "pending",
+        createdAt: new Date(),
+      });
+
+    res.send({
+      success: true,
+      insertedId: result.insertedId,
+    });
+
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to create request",
+    });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+app.patch("/approve-request/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const request =
+      await adoptionRequestsCollection.findOne({
+        _id: new ObjectId(id),
+      });
+
+    if (!request) {
+      return res.status(404).send({
+        message: "Request not found",
+      });
+    }
+
+    // approve selected request
+
+    await adoptionRequestsCollection.updateOne(
+      {
+        _id: new ObjectId(id),
+      },
+      {
+        $set: {
+          status: "approved",
+        },
+      }
+    );
+
+
+    // reject other requests
+
+    await adoptionRequestsCollection.updateMany(
+      {
+        petId: request.petId,
+        _id: {
+          $ne: new ObjectId(id),
+        },
+      },
+      {
+        $set: {
+          status: "rejected",
+        },
+      }
+    );
+
+    // mark pet adopted
+
+   await petsCollection.updateOne(
+  {
+    _id: new ObjectId(request.petId),
+  },
+  {
+    $set: {
+      adopted: true,
+      status: "adopted",
+    },
+  }
+);
+
+    res.send({
+      success: true,
+      message: "Request Approved",
+    });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+
+
+
+
+//request cancel
+app.delete("/requests/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const result =
+      await adoptionRequestsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+
+    res.send(result);
+
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+
+  
+//My Requests
+app.get("/my-requests/:email",verifyToken,async (req, res) => {
+  try {
+    const email = req.params.email;
+
+    const result =
+      await adoptionRequestsCollection
+        .find({
+          userEmail: email,
+        })
+        .sort({
+          createdAt: -1,
+        })
+        .toArray();
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+
+
+
+  
+  app.get("/pet-requests/:petId", async (req, res) => {
+  try {
+    const { petId } = req.params;
+
+    const requests =
+      await adoptionRequestsCollection
+        .find({ petId })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+    res.send(requests);
+
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
 
 
