@@ -58,7 +58,7 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password, confirmPassword, photoURL } = req.body;
 
-    // 1. Required fields check
+    //  Required fields check
     if (!name || !email || !password || !confirmPassword) {
       return res.status(400).send({
         success: false,
@@ -66,12 +66,12 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    // 2. Normalize values (IMPORTANT FIX)
+    //  Normalize values (IMPORTANT FIX)
     const safeEmail = String(email).trim().toLowerCase();
     const safePassword = String(password);
     const safeConfirm = String(confirmPassword);
 
-    // 3. Email validation
+    //  Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(safeEmail)) {
       return res.status(400).send({
@@ -81,7 +81,7 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     
-    // 4. Password match check
+    //  Password match check
   
     if (safePassword !== safeConfirm) {
       return res.status(400).send({
@@ -91,7 +91,7 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
  
-    // 5. Password strength check
+    //  Password strength check
     if (safePassword.length < 6) {
       return res.status(400).send({
         success: false,
@@ -99,7 +99,7 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    // 6. Check existing user
+    //  Check existing user
    
     const existingUser = await usersCollection.findOne({
       email: safeEmail,
@@ -111,15 +111,11 @@ app.post("/api/auth/register", async (req, res) => {
         message: "User already exists",
       });
     }
-
-    // =========================
-    // 7. Hash password
-    // =========================
+    //  Hash password
     const hashedPassword = await bcrypt.hash(safePassword, 10);
 
-    // =========================
-    // 8. Save user
-    // =========================
+    //  Save user
+  
     const result = await usersCollection.insertOne({
       name,
       email: safeEmail,
@@ -221,10 +217,10 @@ app.get("/pets", async (req, res) => {
       ];
     }
 
-    // =========================
+  
     // Filter by species
     // Using MongoDB $in
-    // =========================
+   
 
     if (species && species.trim() !== "") {
       const speciesArray = species
@@ -236,9 +232,9 @@ app.get("/pets", async (req, res) => {
       };
     }
 
-    // =========================
+  
     // Sorting Options
-    // =========================
+    
 
     let sortOptions = {};
 
@@ -653,7 +649,22 @@ app.get("/my-requests/:email",verifyToken,async (req, res) => {
 
 
   
- 
+  app.get("/pet-requests/:petId", async (req, res) => {
+  try {
+    const { petId } = req.params;
+
+    const requests =
+      await adoptionRequestsCollection
+        .find({ petId })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+    res.send(requests);
+
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
 
 
