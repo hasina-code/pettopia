@@ -58,7 +58,7 @@ const verifyToken = (req, res, next) => {
 
 
   async function run() {
-  await client.connect();
+//  await client.connect();
   console.log("MongoDB Connected");
 
   const db = client.db("PetTopia");
@@ -74,7 +74,6 @@ app.get("/pets", async (req, res) => {
     const { search, species, sort, limit } = req.query;
 
     let query = {};
-
     //  Search
     if (search && search.trim() !== "") {
       const regex = new RegExp(search, "i");
@@ -326,8 +325,11 @@ app.delete("/adoption-requests/:id",verifyToken, async (req, res) => {
 });
 
 
-}
 
+app.get("/", (req, res) => {
+    res.send("PetTopia Server is Running!");
+  });
+}
 run().catch(console.dir);
 
 app.listen(port, () => {
